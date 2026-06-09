@@ -28,7 +28,8 @@
   .btn{cursor:pointer;border:1px solid #cfd6e0;background:#fff;border-radius:8px;padding:6px 12px;font-size:14px}
   .btn:hover{border-color:#76b900}
   .viewport{position:relative;overflow:hidden;border:1px solid #e2e6ec;background:#fff;
-    width:100vw;margin-left:calc(50% - 50vw);height:56vh;min-height:360px;cursor:grab;touch-action:none}
+    width:100vw;margin-left:calc(50% - 50vw);height:80vh;min-height:460px;cursor:grab;touch-action:none}
+  #vpsvg{position:absolute;inset:0}
   .viewport.grabbing{cursor:grabbing}
   #vp svg{position:absolute;top:0;left:0;width:100%;height:100%;display:block;user-select:none}
   .gdim{opacity:.12;transition:opacity .12s}
@@ -37,12 +38,23 @@
   g.node.sel{filter:drop-shadow(0 0 7px rgba(70,120,0,.55))}
   g.edge.hot path{stroke-width:4px}
   g.edge.hot polygon{stroke-width:1.6px}
-  /* detail panel */
-  #nodeDetail{margin-top:12px}
-  #nodeDetail .ndhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
-  #nodeDetail .pill{font-size:11px;border:1px solid #d7dde6;border-radius:6px;padding:2px 8px;color:#48536a}
-  #nodeDetail h3{margin:0}
-  #nodeDetail .links{font-size:12.5px;color:#6b7790;margin-top:8px}
+  /* detail overlay — floats over the bottom of the viewer, collapsible */
+  .ndoverlay{position:absolute;left:16px;bottom:16px;z-index:5;
+    width:min(720px,calc(100% - 32px));max-height:46%;display:flex;flex-direction:column;overflow:hidden;
+    background:rgba(255,255,255,.97);border:1px solid #d7dde6;border-radius:11px;
+    box-shadow:0 8px 28px rgba(20,30,60,.20)}
+  .ndoverlay.hidden{display:none}
+  .ndbar{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #eef1f5}
+  .ndbar h3{margin:0;font-size:15px}
+  .ndbar .pill{font-size:11px;border:1px solid #d7dde6;border-radius:6px;padding:2px 8px;color:#48536a}
+  .ndbar .ndbtns{margin-left:auto;display:flex;gap:5px}
+  .ndbtn{cursor:pointer;border:1px solid #cfd6e0;background:#fff;border-radius:6px;padding:2px 9px;font-size:13px;line-height:1.4}
+  .ndbtn:hover{border-color:#76b900}
+  .ndbody{padding:10px 12px;overflow:auto}
+  .ndbody .links{font-size:12.5px;color:#6b7790;margin-top:8px}
+  .ndoverlay.reduced{max-height:none}
+  .ndoverlay.reduced .ndbar{border-bottom:0}
+  .ndoverlay.reduced .ndbody{display:none}
 
   /* MOPD reverse-KL section */
   .seg{display:inline-flex;border:1px solid #cfd6e0;border-radius:10px;overflow:hidden;margin:4px 0 14px}
@@ -124,8 +136,20 @@
     <a class="btn" href="lineage.svg" target="_blank">open SVG ↗</a>
     <span class="hint"><b>ctrl/⌘ + scroll</b> (or pinch) = zoom · drag = pan · <b>click a node</b> for details (click again to deselect) · <span id="zlabel"></span></span>
   </div>
-  <div class="viewport" id="vp"><div class="hint" style="padding:18px">loading graph…</div></div>
-  <div id="nodeDetail" class="panel"><span class="hint">Click a node above to see what model it's built from, the data, and what its algorithm actually means.</span></div>
+  <div class="viewport" id="vp">
+    <div id="vpsvg"><div class="hint" style="padding:18px">loading graph…</div></div>
+    <div id="nodeDetail" class="ndoverlay hidden">
+      <div class="ndbar">
+        <h3 id="ndTitle"></h3><span class="pill" id="ndPill"></span>
+        <span class="ndbtns">
+          <button id="ndToggle" class="ndbtn" title="reduce">▾</button>
+          <button id="ndClose" class="ndbtn" title="close">✕</button>
+        </span>
+      </div>
+      <div class="ndbody" id="ndBody"></div>
+    </div>
+  </div>
+  <p class="hint" style="margin-top:8px">Click any node — its details pop up at the bottom of the viewer. Use <b>▾</b> to reduce the card to its title bar, <b>✕</b> (or click the node again) to close it.</p>
 
   <!-- ============ MOPD reverse-KL ============ -->
   <h2 id="mopd">What the red MOPD arrow actually computes</h2>
@@ -271,8 +295,7 @@ function clearSel(){
   selId=null;
   Object.values(nodes).forEach(g=>g.classList.remove('sel','gdim'));
   edges.forEach(e=>e.g.classList.remove('hot','gdim'));
-  const d=document.getElementById('nodeDetail');
-  d.innerHTML='<span class="hint">Click a node above to see what model it\'s built from, the data, and what its algorithm actually means.</span>';
+  document.getElementById('nodeDetail').classList.add('hidden');
 }
 function selectNode(id){
   if(!nodes[id]) return;
@@ -284,15 +307,16 @@ function selectNode(id){
   const info=NODE_INFO[id]||{t:id,k:'',h:''};
   const ins = inc.filter(e=>e.d===id).map(e=>NODE_INFO[e.s]?NODE_INFO[e.s].t.replace(/ —.*| \(.*/,''):e.s);
   const outs= inc.filter(e=>e.s===id).map(e=>NODE_INFO[e.d]?NODE_INFO[e.d].t.replace(/ —.*| \(.*/,''):e.d);
-  const d=document.getElementById('nodeDetail');
-  d.innerHTML='<div class="ndhead"><h3>'+info.t+'</h3><span class="pill">'+info.k+'</span></div>'
-    +'<div>'+info.h+'</div>'
+  document.getElementById('ndTitle').innerHTML=info.t;
+  document.getElementById('ndPill').textContent=info.k;
+  document.getElementById('ndBody').innerHTML='<div>'+info.h+'</div>'
     +'<div class="links"><b>in ←</b> '+(ins.length?ins.join(', '):'—')+' &nbsp;·&nbsp; <b>out →</b> '+(outs.length?outs.join(', '):'—')+'</div>';
-  d.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const od=document.getElementById('nodeDetail'); od.classList.remove('hidden','reduced');
+  const tg=document.getElementById('ndToggle'); tg.textContent='▾'; tg.title='reduce';
 }
 
 fetch('lineage.svg').then(r=>r.text()).then(txt=>{
-  vp.innerHTML=txt;
+  document.getElementById('vpsvg').innerHTML=txt;
   svg=vp.querySelector('svg');
   const vb=(svg.getAttribute('viewBox')||'0 0 1200 600').split(/\s+/).map(Number);
   natW=vb[2]||1200; natH=vb[3]||600;
@@ -305,7 +329,7 @@ fetch('lineage.svg').then(r=>r.text()).then(txt=>{
   vp.querySelectorAll('g.edge').forEach(g=>{ const tEl=g.querySelector('title'); if(!tEl)return;
     const parts=tEl.textContent.trim().split('->'); if(parts.length===2) edges.push({s:parts[0].trim(),d:parts[1].trim(),g}); });
   fitView();
-}).catch(e=>{ vp.innerHTML='<div class="hint" style="padding:18px">Could not load lineage.svg ('+e+'). Serve this folder over http (the graph is fetched). <a href="lineage.svg">open the SVG directly</a>.</div>'; });
+}).catch(e=>{ document.getElementById('vpsvg').innerHTML='<div class="hint" style="padding:18px">Could not load lineage.svg ('+e+'). Serve this folder over http (the graph is fetched). <a href="lineage.svg">open the SVG directly</a>.</div>'; });
 
 /* wheel zoom — only with ctrl/⌘ (or trackpad pinch, which fires wheel+ctrlKey); plain scroll = page scroll */
 vp.addEventListener('wheel',e=>{ if(!svg)return;
@@ -328,6 +352,17 @@ function endDrag(e){ if(!dragging)return; dragging=false; vp.classList.remove('g
 vp.addEventListener('pointerup',endDrag);
 vp.addEventListener('pointercancel',()=>{dragging=false;vp.classList.remove('grabbing');});
 window.addEventListener('resize',()=>{ if(svg) fitView(); });
+
+/* detail overlay: reduce / close, and keep its own clicks/drags from panning the graph */
+(function(){
+  const od=document.getElementById('nodeDetail');
+  document.getElementById('ndToggle').addEventListener('click',e=>{ e.stopPropagation();
+    const red=od.classList.toggle('reduced'); const b=e.currentTarget;
+    b.textContent=red?'▴':'▾'; b.title=red?'expand':'reduce'; });
+  document.getElementById('ndClose').addEventListener('click',e=>{ e.stopPropagation(); clearSel(); });
+  ['pointerdown','pointerup','pointermove','click','wheel'].forEach(ev=>
+    od.addEventListener(ev,e=>e.stopPropagation()));
+})();
 
 /* =================== visual ↔ math toggle =================== */
 function showPane(which){
