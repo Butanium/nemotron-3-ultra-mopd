@@ -5,13 +5,15 @@ digraph UltraLineage {
   node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10, margin="0.12,0.07"];
   edge  [fontname="Helvetica", fontsize=9];
 
-  /* ============ BACKBONE (the student line) ============ */
-  base   [fillcolor="#e8f6d4", color="#76b900", penwidth=2, label="ULTRA BASE  550B-A55B\l  from: pretrained from scratch\l  data: 20T tokens, 2-phase (diversity→quality),\l        synthetic-heavy web / code / math / legal\l  algo: NVFP4 WSD pretrain + 1M-ctx CPT\l"];
-  sft    [fillcolor="#e8f6d4", color="#76b900", penwidth=2, label="SFT STUDENT\l  from: Ultra Base\l  data: multi-domain SFT, DISTILLED from external committee\l  algo: 2-stage supervised fine-tune (+ shared MTP)\l"];
-  rlvr   [fillcolor="#e8f6d4", color="#76b900", penwidth=2, label="RLVR STUDENT   (= the 'RL checkpoint of §3.2')   ◀ MOPD start + self-teacher\l  from: SFT student\l  data: verifiable envs — math, code, JSON-schema,\l        instr-following, agentic DB-state, search, long-ctx\l  algo: unified RLVR (async GRPO, 16 rollouts/prompt)\l"];
-  mopd1  [fillcolor="#e8f6d4", color="#76b900", penwidth=2, label="ULTRA MOPD1\l  from: RLVR student\l  data: the student's OWN rollouts, graded token-by-token\l        by the iteration-1 teachers\l  algo: MOPD = on-policy reverse-KL distillation (+ warmup)\l"];
-  final  [fillcolor="#e8f6d4", color="#76b900", penwidth=2, label="ULTRA FINAL\l  from: Ultra MOPD1\l  data: student rollouts graded by iteration-2 teachers\l  algo: MOPD — iteration 2\l"];
-  released [fillcolor="#e8f6d4", color="#76b900", penwidth=2, label="RELEASED ULTRA\l  from: Ultra Final\l  algo: MTP boosting (head-only KL) + NVFP4 PTQ\l"];
+  /* ============ BACKBONE (the student line) ============
+     each checkpoint has its OWN colour; its "initialized-from" arrows
+     are drawn in that same colour so you can trace a fork by its hue. */
+  base   [fillcolor="#ece2db", color="#9c755f", penwidth=2.4, label="ULTRA BASE  550B-A55B\l  from: pretrained from scratch\l  data: 20T tokens, 2-phase (diversity→quality),\l        synthetic-heavy web / code / math / legal\l  algo: NVFP4 WSD pretrain + 1M-ctx CPT\l"];
+  sft    [fillcolor="#cfe9e6", color="#3a9e98", penwidth=2.4, label="SFT STUDENT\l  from: Ultra Base\l  data: multi-domain SFT, DISTILLED from external committee\l  algo: 2-stage supervised fine-tune (+ shared MTP)\l"];
+  rlvr   [fillcolor="#d8eccb", color="#4a9e3f", penwidth=2.4, label="RLVR STUDENT   (= the 'RL checkpoint of §3.2')   ◀ MOPD start + self-teacher\l  from: SFT student\l  data: verifiable envs — math, code, JSON-schema,\l        instr-following, agentic DB-state, search, long-ctx\l  algo: unified RLVR (async GRPO, 16 rollouts/prompt)\l"];
+  mopd1  [fillcolor="#f3ecc4", color="#c9a400", penwidth=2.4, label="ULTRA MOPD1\l  from: RLVR student\l  data: the student's OWN rollouts, graded token-by-token\l        by the iteration-1 teachers\l  algo: MOPD = on-policy reverse-KL distillation (+ warmup)\l"];
+  final  [fillcolor="#f0d6f0", color="#a83fa8", penwidth=2.4, label="ULTRA FINAL\l  from: Ultra MOPD1\l  data: student rollouts graded by iteration-2 teachers\l  algo: MOPD — iteration 2\l"];
+  released [fillcolor="#dde2e9", color="#3d4a5c", penwidth=2.4, label="RELEASED ULTRA\l  from: Ultra Final\l  algo: MTP boosting (head-only KL) + NVFP4 PTQ\l"];
 
   /* ============ EXTERNAL (out-of-family data sources) ============ */
   ext [fillcolor="#ececec", color="#888888", label="EXTERNAL MODEL COMMITTEE   (NOT same family)\l  DeepSeek-V3.2 / V4-Pro · GPT-OSS-120B (also LLM-judge)\l  GLM-5 / 5.1 · Qwen3 · Kimi-K2 · Minimax-M2.5\l  role: generate SFT data + some teacher data\l"];
@@ -47,51 +49,51 @@ digraph UltraLineage {
   }
 
   /* =================================================================
-     EDGES — style encodes the relationship; a dashed init edge takes
-     the COLOUR of its SOURCE checkpoint.
-       dashed, source-coloured = "initialized from" (weights forked)
-       solid rose              = MOPD distillation (teacher signal into student)
-       dashed purple           = reward signal (GenRM)
-       dotted grey             = generates data (external model)
+     EDGE STYLE encodes the relationship:
+       DASHED, coloured by its SOURCE node = "initialized from" (weights forked)
+               — this is the ONLY dashed style on the graph.
+       solid rose   (#e11d48) = MOPD distillation (teacher signal into student)
+       solid purple (#8b5cf6) = reward signal (the Ultra GenRM)
+       solid grey   (#888888) = generates data (external out-of-family model)
      ================================================================= */
 
-  /* --- backbone: the student line. dashed (init) + thick + step label --- */
-  base  -> sft      [style=dashed, color="#5a8f00", penwidth=2.6, arrowhead=vee];
-  sft   -> rlvr     [style=dashed, color="#5a8f00", penwidth=2.6, arrowhead=vee];
-  rlvr  -> mopd1    [style=dashed, color="#5a8f00", penwidth=2.6, arrowhead=vee];
-  mopd1 -> final    [style=dashed, color="#5a8f00", penwidth=2.6, arrowhead=vee];
-  final -> released [style=dashed, color="#5a8f00", penwidth=2.6, arrowhead=vee];
+  /* --- backbone init: dashed, thick, coloured by the SOURCE checkpoint --- */
+  base  -> sft      [style=dashed, color="#9c755f", penwidth=2.6, arrowhead=vee];
+  sft   -> rlvr     [style=dashed, color="#3a9e98", penwidth=2.6, arrowhead=vee];
+  rlvr  -> mopd1    [style=dashed, color="#4a9e3f", penwidth=2.6, arrowhead=vee];
+  mopd1 -> final    [style=dashed, color="#c9a400", penwidth=2.6, arrowhead=vee];
+  final -> released [style=dashed, color="#a83fa8", penwidth=2.6, arrowhead=vee];
 
-  /* --- external data + judge --- */
-  ext   -> sft     [style=dotted, color="#888888"];
-  ext   -> t_stem  [style=dotted, color="#888888"];
-  ext   -> t_chat  [style=dotted, color="#888888"];
-  genrm -> t_chat  [style=dashed, color="#8b5cf6"];
-  genrm -> t_if    [style=dashed, color="#8b5cf6"];
-  genrm -> t_chat2 [style=dashed, color="#8b5cf6"];
+  /* --- external data (solid grey) + GenRM reward (solid purple) --- */
+  ext   -> sft     [color="#888888", penwidth=1.4];
+  ext   -> t_stem  [color="#888888", penwidth=1.4];
+  ext   -> t_chat  [color="#888888", penwidth=1.4];
+  genrm -> t_chat  [color="#8b5cf6", penwidth=1.6];
+  genrm -> t_if    [color="#8b5cf6", penwidth=1.6];
+  genrm -> t_chat2 [color="#8b5cf6", penwidth=1.6];
 
-  /* --- INIT edges: dashed, coloured by the SOURCE checkpoint --- */
-  /* iteration-1 teachers fork off the RLVR student (green) / SFT / base */
-  rlvr -> t_stem   [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_if     [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_term   [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_ctool  [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_use    [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_safety [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_search [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  sft  -> t_chat   [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  sft  -> t_office [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  base -> t_swe    [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  sft  -> genrm    [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  /* iteration-2 NEW teachers fork off the improved student (Ultra MOPD1, green) */
-  mopd1  -> t_chat2   [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  mopd1  -> t_ctool2  [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  mopd1  -> t_swe2    [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  mopd1  -> t_office2 [style=dashed, color="#5a8f00", penwidth=1.1, arrowhead=vee];
-  /* coding teacher forks off the reasoning (STEM) teacher — blue source */
+  /* --- teacher INIT edges: dashed, thin, coloured by the SOURCE checkpoint --- */
+  /* iteration-1 teachers fork off the RLVR student (green) / SFT (teal) / base (brown) */
+  rlvr -> t_stem   [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
+  rlvr -> t_if     [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
+  rlvr -> t_term   [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
+  rlvr -> t_ctool  [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
+  rlvr -> t_use    [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
+  rlvr -> t_safety [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
+  rlvr -> t_search [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
+  sft  -> t_chat   [style=dashed, color="#3a9e98", penwidth=1.1, arrowhead=vee];
+  sft  -> t_office [style=dashed, color="#3a9e98", penwidth=1.1, arrowhead=vee];
+  base -> t_swe    [style=dashed, color="#9c755f", penwidth=1.1, arrowhead=vee];
+  sft  -> genrm    [style=dashed, color="#3a9e98", penwidth=1.1, arrowhead=vee];
+  /* iteration-2 NEW teachers fork off the improved student (Ultra MOPD1, gold) */
+  mopd1  -> t_chat2   [style=dashed, color="#c9a400", penwidth=1.1, arrowhead=vee];
+  mopd1  -> t_ctool2  [style=dashed, color="#c9a400", penwidth=1.1, arrowhead=vee];
+  mopd1  -> t_swe2    [style=dashed, color="#c9a400", penwidth=1.1, arrowhead=vee];
+  mopd1  -> t_office2 [style=dashed, color="#c9a400", penwidth=1.1, arrowhead=vee];
+  /* coding teacher forks off the reasoning (STEM) teacher — teacher's own blue */
   t_stem -> t_coding2 [style=dashed, color="#3b82f6", penwidth=1.1, arrowhead=vee];
 
-  /* --- MOPD distillation: solid green, teacher signal INTO the student --- */
+  /* --- MOPD distillation: solid rose, teacher signal INTO the student --- */
   t_stem   -> mopd1 [color="#e11d48", penwidth=2.2];
   t_chat   -> mopd1 [color="#e11d48", penwidth=2.2];
   t_if     -> mopd1 [color="#e11d48", penwidth=2.2];
@@ -108,7 +110,7 @@ digraph UltraLineage {
   t_ctool2  -> final [color="#e11d48", penwidth=2.2];
   t_swe2    -> final [color="#e11d48", penwidth=2.2];
   t_office2 -> final [color="#e11d48", penwidth=2.2];
-  /* reused iter-1 teachers also distil into FINAL (solid green) */
+  /* reused iter-1 teachers also distil into FINAL (solid rose) */
   t_stem   -> final [color="#e11d48", penwidth=2.0];
   t_if     -> final [color="#e11d48", penwidth=2.0];
   t_term   -> final [color="#e11d48", penwidth=2.0];

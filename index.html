@@ -28,7 +28,7 @@
   .btn{cursor:pointer;border:1px solid #cfd6e0;background:#fff;border-radius:8px;padding:6px 12px;font-size:14px}
   .btn:hover{border-color:#76b900}
   .viewport{position:relative;overflow:hidden;border:1px solid #e2e6ec;background:#fff;
-    width:100vw;margin-left:calc(50% - 50vw);height:80vh;min-height:460px;cursor:grab;touch-action:none}
+    width:100vw;margin-left:calc(50% - 50vw);height:56vh;min-height:360px;cursor:grab;touch-action:none}
   .viewport.grabbing{cursor:grabbing}
   #vp svg{position:absolute;top:0;left:0;width:100%;height:100%;display:block;user-select:none}
   .gdim{opacity:.12;transition:opacity .12s}
@@ -89,24 +89,28 @@
   <h2>How to read the arrows</h2>
   <div class="panel">
     <div class="legend">
-      <span class="grp"><span class="ln" style="border-top:3px solid #e11d48"></span><b>MOPD distillation</b> (solid red) — a teacher grading the student's rollouts token-by-token, pulled into the student</span>
-      <span class="grp"><span class="ln" style="border-top:3px dashed #5a8f00"></span><b>initialized from</b> (dashed, coloured by the source) — weights forked from this checkpoint</span>
+      <span class="grp"><span class="ln" style="border-top:3px dashed #888"></span><b>initialized from</b> — the <b>only</b> dashed arrows. Weights forked; each arrow is painted in the <b>colour of its source checkpoint</b> (thick = the student backbone, thin = a teacher forked off a checkpoint), so you can trace any fork by its hue.</span>
     </div>
     <div class="legend">
-      <span class="grp">↳ thick dashed green = the <b>student backbone</b> (each checkpoint forks from the previous)</span>
-      <span class="grp">↳ thin dashed green = a <b>teacher forked off the student</b></span>
-      <span class="grp"><span class="ln" style="border-top:2px dashed #3b82f6"></span>dashed blue = forked off a <b>teacher</b> (coding ← reasoning)</span>
+      <span class="grp"><span class="ln" style="border-top:3px solid #e11d48"></span><b>MOPD distillation</b> (solid rose) — a teacher grading the student's rollouts token-by-token, pulled into the student</span>
+      <span class="grp"><span class="ln" style="border-top:2px solid #8b5cf6"></span><b>GenRM reward</b> (solid purple) — the Ultra GenRM scores a teacher's RLHF</span>
+      <span class="grp"><span class="ln" style="border-top:2px solid #888"></span><b>generates data</b> (solid grey) — out-of-family model</span>
+    </div>
+    <div class="legend" style="margin-top:6px">
+      <span class="grp"><b>student line</b> — each checkpoint its own colour:</span>
+      <span class="grp"><span class="sw" style="background:#ece2db;border:2px solid #9c755f"></span>Base</span>
+      <span class="grp"><span class="sw" style="background:#cfe9e6;border:2px solid #3a9e98"></span>SFT</span>
+      <span class="grp"><span class="sw" style="background:#d8eccb;border:2px solid #4a9e3f"></span>RLVR</span>
+      <span class="grp"><span class="sw" style="background:#f3ecc4;border:2px solid #c9a400"></span>MOPD1</span>
+      <span class="grp"><span class="sw" style="background:#f0d6f0;border:2px solid #a83fa8"></span>Final</span>
+      <span class="grp"><span class="sw" style="background:#dde2e9;border:2px solid #3d4a5c"></span>Released</span>
     </div>
     <div class="legend">
-      <span class="grp"><span class="ln" style="border-top:2px dashed #8b5cf6"></span><b>reward signal</b> — the Ultra GenRM judges a teacher's RLHF</span>
-      <span class="grp"><span class="ln" style="border-top:2px dotted #888"></span><b>generates data</b> — out-of-family model</span>
-    </div>
-    <div class="legend" style="margin-top:4px">
-      <span class="grp"><span class="sw" style="background:#cfeb9e"></span>student line (same family)</span>
-      <span class="grp"><span class="sw" style="background:#dbe9ff"></span>general teacher</span>
-      <span class="grp"><span class="sw" style="background:#ffe7c2"></span>agentic teacher</span>
-      <span class="grp"><span class="sw" style="background:#ece0ff"></span>Ultra GenRM (judge)</span>
-      <span class="grp"><span class="sw" style="background:#ececec"></span>external models</span>
+      <span class="grp"><b>and the helpers:</b></span>
+      <span class="grp"><span class="sw" style="background:#dbe9ff;border-color:#3b82f6"></span>general teacher</span>
+      <span class="grp"><span class="sw" style="background:#ffe7c2;border-color:#f0a93b"></span>agentic teacher</span>
+      <span class="grp"><span class="sw" style="background:#ece0ff;border-color:#8b5cf6"></span>Ultra GenRM (judge)</span>
+      <span class="grp"><span class="sw" style="background:#ececec;border-color:#888"></span>external models</span>
     </div>
   </div>
 
@@ -284,6 +288,7 @@ function selectNode(id){
   d.innerHTML='<div class="ndhead"><h3>'+info.t+'</h3><span class="pill">'+info.k+'</span></div>'
     +'<div>'+info.h+'</div>'
     +'<div class="links"><b>in ←</b> '+(ins.length?ins.join(', '):'—')+' &nbsp;·&nbsp; <b>out →</b> '+(outs.length?outs.join(', '):'—')+'</div>';
+  d.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 fetch('lineage.svg').then(r=>r.text()).then(txt=>{
