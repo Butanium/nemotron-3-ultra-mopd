@@ -28,6 +28,8 @@ Because the graph is fetched at runtime, view it over HTTP (GitHub Pages, or `py
 
 ## Accuracy
 
-Every node's *init / data / algorithm*, all the edges, and the equations are taken from the NVIDIA Nemotron 3 Ultra technical report, §3.3 + Figures 9–10 + Tables 4–5 (equations from §3.3.1). Where the report is vague ("the student model", "an Ultra checkpoint") the page quotes it as such. The animated probability curves in the reverse-KL visual are illustrative — the report does not publish token distributions.
+Every node's *init / data / algorithm*, all the edges, and the equations are taken from the NVIDIA Nemotron 3 Ultra technical report, §3.3 + Figures 9–10 + Tables 4–5 (equations from §3.3.1). The MOPD structure, the iteration-2 teachers forking off Ultra MOPD1, the self-teacher and the reverse-KL objective are all explicit in the report.
+
+A few **"initialized-from"** edges are inferred where the report is vague, and the page says so in its bottom accuracy note: the report gives no init checkpoint for the terminal-use / conversational-tool-use / model-usability / agentic-safety teachers and only "an Ultra checkpoint" for search — Figure 10 groups these on a dedicated **agentic SFT/RL path** (intro, p3: "agentic teachers built on a dedicated agentic SFT path"), drawn here forking from Ultra Base since the only documented anchor is the SWE teacher ("SFT to the Ultra base model on a blend of agentic data", p22). The chat teacher's init is likewise unnamed in prose and placed on the RLVR student per Figure 10. The animated probability curves in the reverse-KL visual are illustrative — the report does not publish token distributions.
 
 Educational explainer; not affiliated with NVIDIA.

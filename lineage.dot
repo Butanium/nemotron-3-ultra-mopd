@@ -15,6 +15,13 @@ digraph UltraLineage {
   final  [fillcolor="#f0d6f0", color="#a83fa8", penwidth=2.4, label="ULTRA FINAL\l  from: Ultra MOPD1\l  data: student rollouts graded by iteration-2 teachers\l  algo: MOPD — iteration 2\l"];
   released [fillcolor="#dde2e9", color="#3d4a5c", penwidth=2.4, label="RELEASED ULTRA\l  from: Ultra Final\l  algo: MTP boosting (head-only KL) + NVFP4 PTQ\l"];
 
+  /* ============ AGENTIC SFT/RL — the SECOND, parallel SFT path (Fig 10 left box) ============
+     Intro (p3): "agentic teachers built on a dedicated agentic SFT path", trained IN PARALLEL
+     to the General SFT→RLVR track (so: no arrow from General SFT, distinct from the RLVR student).
+     Only concrete anchor for its origin = the SWE teacher: "SFT to the Ultra base model on a
+     blend of agentic data" (p22) → forks from Ultra Base. */
+  agentic_sft [fillcolor="#f6dcc0", color="#b45309", penwidth=2.4, label="AGENTIC SFT/RL   (dedicated agentic path)\l  from: Ultra Base — SFT on a blend of agentic data\l        (run in parallel to General SFT; intro p3)\l  note: the report does not name a single init ckpt;\l        SWE teacher is the one documented case\l"];
+
   /* ============ EXTERNAL (out-of-family data sources) ============ */
   ext [fillcolor="#ececec", color="#888888", label="EXTERNAL MODEL COMMITTEE   (NOT same family)\l  DeepSeek-V3.2 / V4-Pro · GPT-OSS-120B (also LLM-judge)\l  GLM-5 / 5.1 · Qwen3 · Kimi-K2 · Minimax-M2.5\l  role: generate SFT data + some teacher data\l"];
 
@@ -26,15 +33,15 @@ digraph UltraLineage {
     label="ITERATION-1 TEACHERS  (each forked off the RLVR student / an Ultra ckpt)";
     fontname="Helvetica"; fontsize=11; color="#cccccc"; style="rounded";
     t_stem   [fillcolor="#dbe9ff", color="#3b82f6", label="STEM TEACHER  (general reasoning)\l  from: RLVR student\l  data: DeepSeek-V4-Pro traces; gpt-oss-120b judge\l        (science / math / code / proofs)\l  algo: extra SFT + RL\l"];
-    t_chat   [fillcolor="#dbe9ff", color="#3b82f6", label="CHAT TEACHER\l  from: Ultra SFT\l  data: LMArena/WildChat seeds; GLM-5 responses;\l        best-of selected by the Ultra GenRM\l  algo: iterative RLHF (uses the Ultra GenRM)\l"];
+    t_chat   [fillcolor="#dbe9ff", color="#3b82f6", label="CHAT TEACHER\l  from: RLVR student   (per Fig 10; prose silent on its init)\l  data: LMArena/WildChat seeds; GLM-5 responses;\l        best-of selected by the Ultra GenRM\l  algo: iterative RLHF (uses the Ultra GenRM)\l"];
     t_if     [fillcolor="#dbe9ff", color="#3b82f6", label="INSTR-FOLLOWING + FACTUALITY TEACHER\l  from: RLVR student\l  data: instr-follow + abstention + RLHF envs\l  algo: domain RLVR (+RLHF 'to avoid behavioral collapse')\l"];
-    t_term   [fillcolor="#ffe7c2", color="#f0a93b", label="TERMINAL-USE TEACHER\l  from: RLVR student\l  data: long-timeout terminal trajectories (up to ~1h)\l  algo: PivotRL + re-profiling on saturation\l"];
-    t_ctool  [fillcolor="#ffe7c2", color="#f0a93b", label="CONVERSATIONAL TOOL-USE TEACHER\l  from: RLVR student\l  data: Super multi-turn tool-use recipe\l  algo: PivotRL\l"];
-    t_swe    [fillcolor="#ffe7c2", color="#f0a93b", label="SWE TEACHER\l  from: Ultra base model\l  data: agentic SFT + live repo, hidden-test verifier\l        (anti-cheat: gold-patch git history deleted)\l  algo: SFT → PivotRL → end-to-end SWE-RL (binary reward)\l"];
-    t_search [fillcolor="#ffe7c2", color="#f0a93b", label="SEARCH TEACHER\l  from: an Ultra checkpoint\l  data: trajectories w/ context management\l        (discard-all resets, summary compression)\l  algo: SFT\l"];
+    t_term   [fillcolor="#ffe7c2", color="#f0a93b", label="TERMINAL-USE TEACHER\l  from: agentic SFT/RL path   (init not stated)\l  data: long-timeout terminal trajectories (up to ~1h)\l  algo: PivotRL + re-profiling on saturation\l"];
+    t_ctool  [fillcolor="#ffe7c2", color="#f0a93b", label="CONVERSATIONAL TOOL-USE TEACHER\l  from: agentic SFT/RL path   (init not stated)\l  data: Super multi-turn tool-use recipe\l  algo: PivotRL\l"];
+    t_swe    [fillcolor="#ffe7c2", color="#f0a93b", label="SWE TEACHER\l  from: Ultra Base — the documented agentic SFT path\l  data: agentic SFT + live repo, hidden-test verifier\l        (anti-cheat: gold-patch git history deleted)\l  algo: SFT → PivotRL → end-to-end SWE-RL (binary reward)\l"];
+    t_search [fillcolor="#ffe7c2", color="#f0a93b", label="SEARCH TEACHER\l  from: an Ultra ckpt — agentic SFT/RL path\l  data: trajectories w/ context management\l        (discard-all resets, summary compression)\l  algo: SFT\l"];
     t_office [fillcolor="#ffe7c2", color="#f0a93b", label="OFFICE / WORKPLACE TEACHER\l  from: Ultra ckpt (post general-SFT)\l  data: AfterQuery GDPval-style deliverables\l  algo: light SFT + pivot RL\l"];
-    t_use    [fillcolor="#ffe7c2", color="#f0a93b", label="MODEL-USABILITY TEACHER\l  from: RLVR student\l  data: Nemo Data Designer (gpt-oss-120b) structured\l        outputs — JSON/YAML/XML/TOML/CSV, extraction\l  algo: RL (Nemo-Gym)\l"];
-    t_safety [fillcolor="#ffe7c2", color="#f0a93b", label="AGENTIC-SAFETY TEACHER\l  from: RLVR student\l  data: indirect-prompt-injection tasks; red-team\l        attacker = Nemotron-3 Super, defender = Nano\l  algo: RL + deterministic verifier\l"];
+    t_use    [fillcolor="#ffe7c2", color="#f0a93b", label="MODEL-USABILITY TEACHER\l  from: agentic SFT/RL path   (init not stated)\l  data: Nemo Data Designer (gpt-oss-120b) structured\l        outputs — JSON/YAML/XML/TOML/CSV, extraction\l  algo: RL (Nemo-Gym)\l"];
+    t_safety [fillcolor="#ffe7c2", color="#f0a93b", label="AGENTIC-SAFETY TEACHER\l  from: agentic SFT/RL path   (init not stated)\l  data: indirect-prompt-injection tasks; red-team\l        attacker = Nemotron-3 Super, defender = Nano\l  algo: RL + deterministic verifier\l"];
   }
 
   /* ============ ITERATION-2 TEACHERS (new ones init FROM MOPD1) ============ */
@@ -73,17 +80,21 @@ digraph UltraLineage {
   genrm -> t_chat2 [color="#8b5cf6", penwidth=1.6];
 
   /* --- teacher INIT edges: dashed, thin, coloured by the SOURCE checkpoint --- */
-  /* iteration-1 teachers fork off the RLVR student (green) / SFT (teal) / base (brown) */
+  /* GENERAL teachers fork off the RLVR student (green): STEM & Instr-follow explicit (p24-25);
+     Chat per Figure 10's grouping (prose is silent on Chat's init) */
   rlvr -> t_stem   [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
   rlvr -> t_if     [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_term   [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_ctool  [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_use    [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_safety [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
-  rlvr -> t_search [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
-  sft  -> t_chat   [style=dashed, color="#3a9e98", penwidth=1.1, arrowhead=vee];
+  rlvr -> t_chat   [style=dashed, color="#4a9e3f", penwidth=1.1, arrowhead=vee];
+  /* AGENTIC teachers sit on the dedicated agentic SFT/RL path (Fig 10), itself forked from Ultra Base */
+  base        -> agentic_sft [style=dashed, color="#9c755f", penwidth=2.0, arrowhead=vee];
+  agentic_sft -> t_swe       [style=dashed, color="#b45309", penwidth=1.1, arrowhead=vee];
+  agentic_sft -> t_term      [style=dashed, color="#b45309", penwidth=1.1, arrowhead=vee];
+  agentic_sft -> t_ctool     [style=dashed, color="#b45309", penwidth=1.1, arrowhead=vee];
+  agentic_sft -> t_search    [style=dashed, color="#b45309", penwidth=1.1, arrowhead=vee];
+  agentic_sft -> t_use       [style=dashed, color="#b45309", penwidth=1.1, arrowhead=vee];
+  agentic_sft -> t_safety    [style=dashed, color="#b45309", penwidth=1.1, arrowhead=vee];
+  /* Office teacher is the exception — explicitly from the GENERAL SFT checkpoint (p23) */
   sft  -> t_office [style=dashed, color="#3a9e98", penwidth=1.1, arrowhead=vee];
-  base -> t_swe    [style=dashed, color="#9c755f", penwidth=1.1, arrowhead=vee];
   sft  -> genrm    [style=dashed, color="#3a9e98", penwidth=1.1, arrowhead=vee];
   /* iteration-2 NEW teachers fork off the improved student (Ultra MOPD1, gold) */
   mopd1  -> t_chat2   [style=dashed, color="#c9a400", penwidth=1.1, arrowhead=vee];
