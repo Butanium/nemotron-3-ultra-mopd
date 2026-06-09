@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nemotron 3 Ultra — who trains whom (interactive)</title>
+<style>
+  body{margin:0;background:#f6f7f9;color:#1a2230;font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1280px;margin:0 auto;padding:26px 20px 90px}
+  h1{font-size:26px;margin:0 0 6px}
+  h2{font-size:18px;margin:36px 0 10px;border-bottom:1px solid #e2e6ec;padding-bottom:6px}
+  h3{font-size:15.5px;margin:0 0 8px;color:#1a2230}
+  p.lede{color:#48536a;max-width:900px}
+  .panel{background:#fff;border:1px solid #e2e6ec;border-radius:12px;padding:14px;box-shadow:0 2px 10px rgba(20,30,60,.05)}
+  .hint{font-size:13px;color:#6b7790}
+  code{background:#eef1f5;border-radius:4px;padding:0 4px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+  .key{color:#3f7a00;font-weight:600}
+
+  /* legend */
+  .legend{display:flex;flex-wrap:wrap;gap:8px 22px;margin:12px 0}
+  .legend .grp{font-size:13px;color:#48536a}
+  .legend b{color:#1a2230}
+  .ln{display:inline-block;width:30px;height:0;vertical-align:middle;margin-right:7px}
+  .sw{display:inline-block;width:13px;height:13px;border-radius:3px;vertical-align:-2px;margin-right:6px;border:1px solid #00000022}
+
+  /* full-width interactive graph */
+  .ctrls{display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}
+  .btn{cursor:pointer;border:1px solid #cfd6e0;background:#fff;border-radius:8px;padding:6px 12px;font-size:14px}
+  .btn:hover{border-color:#76b900}
+  .viewport{position:relative;overflow:hidden;border:1px solid #e2e6ec;background:#fff;
+    width:100vw;margin-left:calc(50% - 50vw);height:80vh;min-height:460px;cursor:grab;touch-action:none}
+  .viewport.grabbing{cursor:grabbing}
+  #vp svg{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;user-select:none}
+  .gdim{opacity:.12;transition:opacity .12s}
+  g.node{cursor:pointer}
+  g.node.sel > polygon, g.node.sel > path{stroke-width:3.5px}
+  g.node.sel{filter:drop-shadow(0 0 7px rgba(70,120,0,.55))}
+  g.edge.hot path{stroke-width:4px}
+  g.edge.hot polygon{stroke-width:1.6px}
+  /* detail panel */
+  #nodeDetail{margin-top:12px}
+  #nodeDetail .ndhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  #nodeDetail .pill{font-size:11px;border:1px solid #d7dde6;border-radius:6px;padding:2px 8px;color:#48536a}
+  #nodeDetail h3{margin:0}
+  #nodeDetail .links{font-size:12.5px;color:#6b7790;margin-top:8px}
+
+  /* MOPD reverse-KL section */
+  .seg{display:inline-flex;border:1px solid #cfd6e0;border-radius:10px;overflow:hidden;margin:4px 0 14px}
+  .seg button{border:0;border-radius:0;background:#fff;padding:9px 16px;cursor:pointer;font-size:14px}
+  .seg button.on{background:#76b900;color:#06210a;font-weight:600}
+  .cvwrap{border:1px solid #e2e6ec;border-radius:12px;background:#fff;padding:10px;margin:6px 0}
+  canvas{width:100%;height:auto;display:block}
+  .kltoggle{display:inline-flex;border:1px solid #cfd6e0;border-radius:10px;overflow:hidden;margin:4px 0 6px}
+  .kltoggle button{border:0;border-radius:0;background:#fff;padding:8px 14px;cursor:pointer;font-size:13.5px}
+  .kltoggle button.fon{background:#dbe9ff;color:#15407a;font-weight:600}
+  .kltoggle button.ron{background:#d6f0b8;color:#2f5300;font-weight:600}
+  .callout{font-size:14px;color:#48536a;max-width:900px;min-height:48px}
+  .klread{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:#3f7a00;margin-top:4px}
+  .mathpanel p{max-width:900px}
+  .eqrow{background:#f0f3f7;border:1px solid #e2e6ec;border-radius:8px;padding:6px 10px;margin:6px 0;overflow-x:auto}
+  .mini{font-size:13px;color:#6b7790;max-width:900px}
+  .hidden{display:none}
+  mjx-container{overflow-x:auto;overflow-y:hidden}
+  ul{max-width:900px}
+
+  /* table */
+  table{border-collapse:collapse;width:100%;font-size:13px;background:#fff;border:1px solid #e2e6ec;border-radius:12px;overflow:hidden}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #eef1f5;vertical-align:top}
+  th{background:#f0f3f7;font-size:12px;letter-spacing:.03em;text-transform:uppercase;color:#48536a}
+  td.m{font-weight:600;white-space:nowrap}
+  tr.back td.m{color:#3f7a00} tr.gen td.m{color:#2563c9} tr.ag td.m{color:#b9760a}
+  tr.ext td.m{color:#5b6472} tr.rm td.m{color:#7c3aed}
+  .rowtag{display:inline-block;font-size:10px;border:1px solid #d7dde6;border-radius:5px;padding:1px 5px;color:#6b7790;margin-left:6px}
+</style>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
+                     options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h1>Nemotron 3 Ultra — who trains whom</h1>
+  <p class="lede">A map of the post-training pipeline of NVIDIA's largest open model, built around <b>MOPD —
+  Multi-teacher On-Policy Distillation</b>. For every student checkpoint and every teacher: what it's
+  <b>initialized from</b>, the <b>data</b> and <b>algorithm</b> that built it, and how it feeds the next student.
+  <b>Click any node</b> to light up its connections and read what its algorithm means.</p>
+
+  <h2>How to read the arrows</h2>
+  <div class="panel">
+    <div class="legend">
+      <span class="grp"><span class="ln" style="border-top:3px solid #76b900"></span><b>MOPD distillation</b> (solid green) — a teacher grading the student's rollouts token-by-token, pulled into the student</span>
+      <span class="grp"><span class="ln" style="border-top:3px dashed #5a8f00"></span><b>initialized from</b> (dashed, coloured by the source) — weights forked from this checkpoint</span>
+    </div>
+    <div class="legend">
+      <span class="grp">↳ thick dashed green = the <b>student backbone</b> (each checkpoint forks from the previous)</span>
+      <span class="grp">↳ thin dashed green = a <b>teacher forked off the student</b></span>
+      <span class="grp"><span class="ln" style="border-top:2px dashed #3b82f6"></span>dashed blue = forked off a <b>teacher</b> (coding ← reasoning)</span>
+    </div>
+    <div class="legend">
+      <span class="grp"><span class="ln" style="border-top:2px dashed #8b5cf6"></span><b>reward signal</b> — the Ultra GenRM judges a teacher's RLHF</span>
+      <span class="grp"><span class="ln" style="border-top:2px dotted #888"></span><b>generates data</b> — out-of-family model</span>
+    </div>
+    <div class="legend" style="margin-top:4px">
+      <span class="grp"><span class="sw" style="background:#cfeb9e"></span>student line (same family)</span>
+      <span class="grp"><span class="sw" style="background:#dbe9ff"></span>general teacher</span>
+      <span class="grp"><span class="sw" style="background:#ffe7c2"></span>agentic teacher</span>
+      <span class="grp"><span class="sw" style="background:#ece0ff"></span>Ultra GenRM (judge)</span>
+      <span class="grp"><span class="sw" style="background:#ececec"></span>external models</span>
+    </div>
+  </div>
+
+  <h2>The pipeline</h2>
+  <div class="ctrls">
+    <button class="btn" onclick="zoomCenter(1.25)">＋</button>
+    <button class="btn" onclick="zoomCenter(0.8)">－</button>
+    <button class="btn" onclick="fitView()">fit</button>
+    <button class="btn" onclick="resetView()">100%</button>
+    <button class="btn" onclick="clearSel()">clear selection</button>
+    <a class="btn" href="lineage.svg" target="_blank">open SVG ↗</a>
+    <span class="hint">scroll = zoom · hold &amp; drag = pan · <b>click a node</b> for details · <span id="zlabel"></span></span>
+  </div>
+  <div class="viewport" id="vp"><div class="hint" style="padding:18px">loading graph…</div></div>
+  <div id="nodeDetail" class="panel"><span class="hint">Click a node above to see what model it's built from, the data, and what its algorithm actually means.</span></div>
+
+  <!-- ============ MOPD reverse-KL ============ -->
+  <h2 id="mopd">What the green arrow actually computes</h2>
+  <p class="lede">Every green arrow is the same operation — <b>on-policy reverse-KL distillation</b> — the core of MOPD.
+  The <i>direction</i> of the KL is the whole trick, and it's really a picture. Toggle between the visual and the math.</p>
+
+  <div class="seg">
+    <button id="tabVisual" class="on" onclick="showPane('visual')">▦ Intuition (visual)</button>
+    <button id="tabMath" onclick="showPane('math')">∑ The math</button>
+  </div>
+
+  <div id="paneVisual">
+    <div class="panel">
+      <p>One generation step = a distribution over what to write next. The <span style="color:#5a8f00;font-weight:600">teacher</span>
+      has a preferred distribution (here, two good continuations); we train the <span style="color:#2563c9;font-weight:600">student</span>
+      to "match" it. What "match" means depends entirely on which way you point the KL — flip it and watch:</p>
+      <div class="kltoggle">
+        <button id="btnRev" class="ron">Reverse KL — commit (what MOPD uses)</button>
+        <button id="btnFwd">Forward KL — cover (standard distillation)</button>
+      </div>
+      <div class="cvwrap"><canvas id="klcanvas" height="300"></canvas></div>
+      <p class="callout" id="klcap"></p>
+      <p class="klread" id="klread"></p>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>The other word: “on-policy”</h3>
+      <p>The teacher doesn't grade a fixed pile of teacher-written text — it grades the <b>student's own rollouts</b>.
+      The model generates, and at every token the teacher says "here's how I'd have weighted the options there." So the
+      student is corrected <b>exactly on the situations it actually lands in</b>, killing the usual gap where a model trained
+      on teacher transcripts then wanders into states it never practiced. Practice your own mistakes, expert over your shoulder, every token.</p>
+      <p class="mini">Bonus: you only need the teacher to <b>score</b> the student's tokens, never to hand over its full distribution on a fixed corpus — which is what makes running 10+ specialized teachers affordable.</p>
+    </div>
+  </div>
+
+  <div id="paneMath" class="hidden mathpanel">
+    <div class="panel">
+      <p>Student \(\pi_\theta\), domain-\(i\) teacher \(\pi^{T_i}\). The student samples a completion \(y=(y_1,\dots,y_H)\) for prompt \(q\); let \(s_t=(q,y_{\lt t})\) be the prefix. MOPD maximizes</p>
+      $$\mathcal{J}_{\text{MOPD}}(\theta)=\sum_{i=1}^{N}\lambda_i\;
+        \mathbb{E}_{q\sim\mathcal{D}_i,\;y\sim\pi_\theta(\cdot\mid q)}
+        \!\left[\sum_{t=1}^{H}\Big(\log\pi^{T_i}(y_t\mid s_t)-\log\pi_\theta(y_t\mid s_t)\Big)\right]$$
+      <p>The report's key line: maximizing this is <b>exactly</b>, at every prefix \(s_t\), minimizing the <b>reverse</b> KL</p>
+      $$\min_\theta\;D_{\mathrm{KL}}\!\big(\pi_\theta(\cdot\mid s_t)\,\big\|\,\pi^{T_i}(\cdot\mid s_t)\big)
+        =\sum_{v}\pi_\theta(v\mid s_t)\,\log\frac{\pi_\theta(v\mid s_t)}{\pi^{T_i}(v\mid s_t)}.$$
+      <p>Why "reverse" is the mode-seeker the visual shows — compare the two directions at one prefix:</p>
+      <p class="eqrow">forward (mass-covering): \(\;D_{\mathrm{KL}}(\pi^{T}\,\|\,\pi_\theta)=\sum_v \pi^{T}(v)\,\log\frac{\pi^{T}(v)}{\pi_\theta(v)}\) — weighted by the <i>teacher</i>, so it punishes the student for missing any teacher mode → covers everything, hedges.</p>
+      <p class="eqrow">reverse (mode-seeking): \(\;D_{\mathrm{KL}}(\pi_\theta\,\|\,\pi^{T})=\sum_v \pi_\theta(v)\,\log\frac{\pi_\theta(v)}{\pi^{T}(v)}\) — weighted by the <i>student</i>, so wherever the student puts mass the teacher must agree; \(\pi^T\!\approx\!0\Rightarrow\pi_\theta\!\to\!0\) (zero-forcing) → commits to a mode.</p>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>In practice: asynchronous + clipped</h3>
+      <p>At scale the rollouts come from a slightly stale snapshot \(\pi_{\text{behav}}\) while the learner is already at \(\pi_{\text{prox}}\). MOPD wraps the per-token reverse-KL signal in a PPO-style clipped surrogate:</p>
+      $$\mathcal{J}_{\text{async-MOPD}}(\theta)=
+        \mathbb{E}_{q\sim\mathcal{D}_i,\;y\sim\pi_{\text{behav}}}
+        \!\left[\sum_{t=1}^{H} m_t\,c_t\,
+        \min\!\big(r_t(\theta)\hat A_t,\;\operatorname{clip}(r_t(\theta),1-\epsilon,1+\epsilon)\hat A_t\big)\right]$$
+      <p>with per-token <b>distillation advantage</b> = the teacher-minus-student log-prob gap,</p>
+      $$\hat A_t=\operatorname{sg}\!\big[\log\pi^{T_i}(y_t\mid s_t)-\log\pi_{\text{prox}}(y_t\mid s_t)\big],$$
+      <p>\(r_t(\theta)=\pi_\theta/\pi_{\text{prox}}\) the policy ratio, \(c_t=\operatorname{sg}[\pi_{\text{prox}}/\pi_{\text{behav}}]\) the stale-sampler correction, \(\operatorname{sg}[\cdot]\) stop-gradient, \(m_t\) IcePop token-masking. Strip the bookkeeping and \(\hat A_t\) is just "raise tokens the teacher likes more than you currently do" — the reverse-KL gradient. <span class="mini">(Report §3.3.1, Eqs 1–3.)</span></p>
+    </div>
+  </div>
+
+  <h2>The same thing as a table</h2>
+  <p class="lede" style="margin-top:0">If the graph is busy, this is the precise version. <span class="key">Feeds →</span> = which student this model is used to train.</p>
+  <table>
+    <thead><tr><th>Model</th><th>Init from</th><th>Data</th><th>Algorithm</th><th>Feeds →</th></tr></thead>
+    <tbody>
+      <tr class="back"><td class="m">Ultra Base</td><td>— (from scratch)</td><td>20T tokens, 2-phase (diversity→quality), synthetic-heavy web/code/math/legal</td><td>NVFP4 WSD pretrain + 1M-ctx CPT</td><td>SFT student</td></tr>
+      <tr class="back"><td class="m">SFT student</td><td>Ultra Base</td><td>multi-domain SFT, <b>distilled from the external committee</b></td><td>2-stage supervised fine-tune (+ shared MTP)</td><td>RLVR student · GenRM · several teachers</td></tr>
+      <tr class="back"><td class="m">RLVR student <span class="rowtag">= self-teacher</span></td><td>SFT student</td><td>verifiable envs — math, code, JSON-schema, instr-following, agentic DB-state, search, long-ctx</td><td>unified RLVR (async GRPO, 16 rollouts)</td><td>Ultra MOPD1 · init for most iter-1 teachers</td></tr>
+      <tr class="back"><td class="m">Ultra MOPD1</td><td>RLVR student</td><td>the student's <b>own rollouts</b>, graded token-by-token by the iter-1 teachers</td><td><b>MOPD</b> = on-policy reverse-KL distillation (+ warmup)</td><td>Ultra Final · init for iter-2 new teachers</td></tr>
+      <tr class="back"><td class="m">Ultra Final</td><td>Ultra MOPD1</td><td>student rollouts graded by iter-2 teachers</td><td>MOPD — iteration 2</td><td>Released Ultra</td></tr>
+      <tr class="back"><td class="m">Released Ultra</td><td>Ultra Final</td><td>—</td><td>MTP boosting (head-only KL) + NVFP4 PTQ</td><td>(shipped)</td></tr>
+      <tr class="ext"><td class="m">External committee</td><td>out-of-family</td><td>DeepSeek-V3.2/V4-Pro · GPT-OSS-120B (also judge) · GLM-5/5.1 · Qwen3 · Kimi-K2 · Minimax-M2.5</td><td>—</td><td>generates SFT + some teacher data</td></tr>
+      <tr class="rm"><td class="m">Ultra GenRM <span class="rowtag">judge</span></td><td>Ultra SFT <b>(same family)</b></td><td>HelpSteer3 + LMArena prefs + synthetic safety</td><td>RLVR, learns to match human score + ranking; principle-following</td><td>reward signal for Chat &amp; Instr-follow teachers</td></tr>
+      <tr class="gen"><td class="m">STEM teacher <span class="rowtag">↺</span></td><td>RLVR student</td><td>DeepSeek-V4-Pro traces; gpt-oss-120b judge (science/math/code/proofs)</td><td>extra SFT + RL</td><td>MOPD1 → (reused) Final</td></tr>
+      <tr class="gen"><td class="m">Chat teacher</td><td>Ultra SFT</td><td>LMArena/WildChat seeds; GLM-5 responses; best-of selected by Ultra GenRM</td><td>iterative RLHF (uses Ultra GenRM)</td><td>MOPD1</td></tr>
+      <tr class="gen"><td class="m">Instr-follow + Factuality <span class="rowtag">↺</span></td><td>RLVR student</td><td>instr-follow + abstention + RLHF envs</td><td>domain RLVR (+RLHF “to avoid behavioral collapse”)</td><td>MOPD1 → (reused) Final</td></tr>
+      <tr class="ag"><td class="m">Terminal-use teacher <span class="rowtag">↺</span></td><td>RLVR student</td><td>long-timeout terminal trajectories (up to ~1h)</td><td>PivotRL + re-profiling</td><td>MOPD1 → (reused) Final</td></tr>
+      <tr class="ag"><td class="m">Conv tool-use teacher</td><td>RLVR student</td><td>Super multi-turn tool-use recipe</td><td>PivotRL</td><td>MOPD1</td></tr>
+      <tr class="ag"><td class="m">SWE teacher</td><td>Ultra base model</td><td>agentic SFT + live repo, hidden-test verifier (anti-cheat: gold-patch git history deleted)</td><td>SFT → PivotRL → end-to-end SWE-RL (binary reward)</td><td>MOPD1</td></tr>
+      <tr class="ag"><td class="m">Search teacher <span class="rowtag">↺</span></td><td>an Ultra checkpoint</td><td>trajectories with context management (discard-all resets, summary compression)</td><td>SFT</td><td>MOPD1 → (reused) Final</td></tr>
+      <tr class="ag"><td class="m">Office / Workplace teacher</td><td>Ultra ckpt (post general-SFT)</td><td>AfterQuery GDPval-style deliverables</td><td>light SFT + pivot RL</td><td>MOPD1</td></tr>
+      <tr class="ag"><td class="m">Model-usability teacher</td><td>RLVR student</td><td>Nemo Data Designer (gpt-oss-120b) structured outputs — JSON/YAML/XML/TOML/CSV, extraction</td><td>RL (Nemo-Gym)</td><td>MOPD1</td></tr>
+      <tr class="ag"><td class="m">Agentic-safety teacher <span class="rowtag">↺</span></td><td>RLVR student</td><td>indirect-prompt-injection tasks; red-team attacker = Nemotron-3 Super, defender = Nano</td><td>RL + deterministic verifier</td><td>MOPD1 → (reused) Final</td></tr>
+      <tr class="ag"><td class="m">★ Coding teacher</td><td>reasoning teacher</td><td>competitive coding (14K + 4K problems)</td><td>RL (+2.4 on LiveCodeBench v6)</td><td>Ultra Final</td></tr>
+      <tr class="gen"><td class="m">★ Chat teacher 2</td><td>Ultra MOPD1</td><td>refreshed chat + Ultra GenRM</td><td>iterative RLHF</td><td>Ultra Final</td></tr>
+      <tr class="ag"><td class="m">★ Conv tool-use teacher 2</td><td>Ultra MOPD1</td><td>sequential, dependent multi-step tool use</td><td>PivotRL</td><td>Ultra Final</td></tr>
+      <tr class="ag"><td class="m">★ SWE teacher 2</td><td>Ultra MOPD1</td><td>SWE repos</td><td>SFT → PivotRL → SWE-RL</td><td>Ultra Final</td></tr>
+      <tr class="ag"><td class="m">★ Office teacher 2</td><td>Ultra MOPD1</td><td>AfterQuery</td><td>SFT + pivot RL</td><td>Ultra Final</td></tr>
+    </tbody>
+  </table>
+  <p class="hint" style="margin-top:10px">★ = teacher created fresh in iteration 2, <b>initialized from Ultra MOPD1</b>. ↺ = iteration-1 teacher reused in iteration 2.
+  Source: NVIDIA Nemotron 3 Ultra technical report (2026-06-04), §3.3 + Figures 9–10, Tables 4–5. The animated curves in the visual are illustrative; equations are quoted from §3.3.1.</p>
+</div>
+
+<script>
+/* =================== interactive graph =================== */
+const NODE_INFO = {
+  base:{t:"Ultra Base — 550B-A55B",k:"student line",h:"The pretrained backbone everything else sits on. <b>NVFP4</b> is NVIDIA's 4-bit floating-point training format; <b>WSD</b> is a warmup-stable-decay learning-rate schedule; <b>CPT</b> (continued pre-training) stretches the context window to 1M tokens. No post-training yet — just a strong base model."},
+  sft:{t:"SFT student",k:"student line",h:"Supervised fine-tuning on a multi-domain mixture whose <i>responses are mostly written by other labs' models</i> (DeepSeek, GPT-OSS, GLM, Qwen, Kimi) — i.e. distillation from an external committee. Two stages (short context, then long). This is also the checkpoint the GenRM and the chat/office teachers are forked from."},
+  rlvr:{t:"RLVR student  (the MOPD starting point)",k:"student line",h:"<b>RL from Verifiable Rewards</b>: the model is rewarded only when an automatic checker passes — unit tests, JSON-schema match, database-state match, instruction verifiers. <b>async GRPO</b> = Group-Relative Policy Optimization run asynchronously (rollouts and weight updates pipelined). This single checkpoint is what MOPD starts from, what most iteration-1 teachers are forked from, and its own self-teacher for domains lacking a specialist."},
+  mopd1:{t:"Ultra MOPD1",k:"student line",h:"The student after <b>one</b> round of Multi-teacher On-Policy Distillation. The student writes rollouts; each iteration-1 teacher grades them token-by-token; the student is pulled toward the teachers by reverse-KL (see the section below). <b>Warmup</b> = a short SFT beforehand so the student's outputs stay inside each teacher's comfort zone, which makes the teacher's grades reliable."},
+  final:{t:"Ultra Final",k:"student line",h:"Initialized from MOPD1, then a <b>second</b> MOPD round using fresh teachers forked from MOPD1 (★) plus reused iteration-1 teachers. This is the co-evolution loop: a better student lets you train better teachers, which distil an even better student."},
+  released:{t:"Released Ultra",k:"student line",h:"Ultra Final after two inference-only finishing steps: <b>MTP boosting</b> (training the multi-token-prediction draft head so speculative decoding accepts more tokens) and <b>NVFP4 PTQ</b> (post-training quantization to 4-bit). These don't change the model's behavior, just its speed. Shipped weights."},
+  ext:{t:"External model committee",k:"out-of-family",h:"Models from other labs used only to <i>generate data</i> (SFT responses, some teacher data) and to act as LLM judges. They are <b>not</b> in the Nemotron family — so any of their quirks enter Ultra through the <i>data</i>, never through shared weights."},
+  genrm:{t:"Ultra-based GenRM (the judge)",k:"reward model — same family",h:"A generative reward model <b>forked from the Ultra SFT student</b>, RL-trained to emit a helpfulness score + a ranking that match human preference data. <b>Principle-following</b>: at judging time you can hand it a rubric and it conditions on it, so you can steer it per training cycle without retraining. It scores the chat and instruction teachers' RLHF — note it's the <i>same family</i> as the policy it judges."},
+  t_stem:{t:"STEM teacher (general reasoning)",k:"general teacher",h:"The broad reasoning specialist — math, code, sciences, humanities. Forked from the RLVR student, then extra SFT + RL on harder data generated by DeepSeek-V4-Pro and filtered by a gpt-oss-120b judge. Strong enough to match or beat DeepSeek-V4-Pro on several reasoning benchmarks; the coding teacher is later forked from <i>it</i>."},
+  t_chat:{t:"Chat teacher",k:"general teacher",h:"Open-ended chat quality. Forked from the SFT student; <b>iterative RLHF</b> where candidate replies come from GLM-5 and are scored/selected by the Ultra GenRM, re-curating data each round to fix observed weaknesses."},
+  t_if:{t:"Instruction-following + factuality teacher",k:"general teacher",h:"Strict formats, mid-conversation instruction changes, long-horizon coherence — plus <b>abstention</b> (saying \"I'm not sure\" instead of confidently hallucinating). Domain-focused RLVR; RLHF data is mixed in explicitly \"to avoid behavioral collapse\"."},
+  t_term:{t:"Terminal-use teacher",k:"agentic teacher",h:"Long-horizon terminal tasks — the model may run a single task for up to ~1 hour. <b>PivotRL</b> is NVIDIA's agentic-RL recipe; <b>re-profiling</b> means re-measuring task difficulty whenever the model saturates, to keep the curriculum challenging."},
+  t_ctool:{t:"Conversational tool-use teacher",k:"agentic teacher",h:"Multi-turn tool calling. PivotRL on the Nemotron-Super recipe; the iteration-2 version pushes sequential, <i>dependent</i> multi-step actions to stop the agent quitting early."},
+  t_swe:{t:"SWE teacher",k:"agentic teacher",h:"Resolves real GitHub issues. Three stages: agentic SFT → PivotRL → <b>end-to-end SWE-RL</b>, where it edits a live repo and a hidden test suite returns a binary pass/fail reward. <b>Anti-cheat:</b> the gold patch's git history is physically deleted so the agent can't just look up the answer."},
+  t_search:{t:"Search teacher",k:"agentic teacher",h:"Long, noisy search sessions. Forked from an Ultra checkpoint; SFT on trajectories that practice <b>context management</b> (discarding or summarizing old results) so the agent doesn't blow its context window before finishing."},
+  t_office:{t:"Office / workplace teacher",k:"agentic teacher",h:"GDPval-style economic deliverables — spreadsheets, reports, documents. Forked from an Ultra checkpoint; a light SFT to transfer workflow priors, then pivot RL on <b>AfterQuery</b> professional tasks."},
+  t_use:{t:"Model-usability teacher",k:"agentic teacher",h:"Machine-friendly outputs: JSON / YAML / XML / TOML / CSV schemas, document extraction with distractors, citation and free-form formatting. Seed data via Nemo Data Designer (gpt-oss-120b); RL inside Nemo-Gym."},
+  t_safety:{t:"Agentic-safety teacher",k:"agentic teacher",h:"Resists <b>indirect prompt injection</b> — malicious instructions hidden inside a tool's returned content. Trained with an automated red-team loop: <b>Nemotron-3 Super</b> plays attacker, <b>Nano</b> plays defender, and a deterministic verifier marks success only if the agent ignored the planted instruction."},
+  t_coding2:{t:"★ Coding teacher (iteration 2)",k:"agentic teacher",h:"Competitive-coding RL stacked on top of the <i>reasoning</i> teacher (so its parent is the STEM teacher, not MOPD1). +2.4 on LiveCodeBench v6 over the reasoning teacher."},
+  t_chat2:{t:"★ Chat teacher 2 (iteration 2)",k:"general teacher",h:"A refreshed chat specialist forked from <b>Ultra MOPD1</b> (the improved student), re-run with iterative RLHF and the Ultra GenRM. Distilled into Ultra Final."},
+  t_ctool2:{t:"★ Conv tool-use teacher 2 (iteration 2)",k:"agentic teacher",h:"Forked from Ultra MOPD1; PivotRL on sequential, dependent multi-step tool-use. Distilled into Ultra Final."},
+  t_swe2:{t:"★ SWE teacher 2 (iteration 2)",k:"agentic teacher",h:"Forked from Ultra MOPD1; SFT → PivotRL → SWE-RL on software repos. Distilled into Ultra Final."},
+  t_office2:{t:"★ Office teacher 2 (iteration 2)",k:"agentic teacher",h:"Forked from Ultra MOPD1; SFT + pivot RL on AfterQuery deliverables. Distilled into Ultra Final."}
+};
+
+const vp = document.getElementById('vp');
+let svg=null, nodes={}, edges=[], natW=1200, natH=600;
+let scale=1, tx=0, ty=0;
+
+function apply(){ if(svg){ svg.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';
+  const z=document.getElementById('zlabel'); if(z) z.textContent=Math.round(scale*100)+'%'; } }
+function fitView(){ const r=vp.getBoundingClientRect(); scale=Math.min(r.width/natW,(r.height)/natH)*0.98;
+  tx=(r.width-natW*scale)/2; ty=(r.height-natH*scale)/2; apply(); }
+function resetView(){ const r=vp.getBoundingClientRect(); scale=1; tx=Math.max(0,(r.width-natW)/2); ty=0; apply(); }
+function zoomAt(cx,cy,f){ const ns=Math.min(8,Math.max(0.05,scale*f)); tx=cx-(cx-tx)*(ns/scale); ty=cy-(cy-ty)*(ns/scale); scale=ns; apply(); }
+function zoomCenter(f){ const r=vp.getBoundingClientRect(); zoomAt(r.width/2,r.height/2,f); }
+
+function clearSel(){
+  Object.values(nodes).forEach(g=>g.classList.remove('sel','gdim'));
+  edges.forEach(e=>e.g.classList.remove('hot','gdim'));
+  const d=document.getElementById('nodeDetail');
+  d.innerHTML='<span class="hint">Click a node above to see what model it\'s built from, the data, and what its algorithm actually means.</span>';
+}
+function selectNode(id){
+  if(!nodes[id]) return;
+  const inc = edges.filter(e=>e.s===id||e.d===id);
+  const adj = new Set([id]); inc.forEach(e=>{adj.add(e.s);adj.add(e.d);});
+  Object.entries(nodes).forEach(([nid,g])=>{ g.classList.toggle('sel',nid===id); g.classList.toggle('gdim',!adj.has(nid)); });
+  edges.forEach(e=>{ const hot=(e.s===id||e.d===id); e.g.classList.toggle('hot',hot); e.g.classList.toggle('gdim',!hot); });
+  const info=NODE_INFO[id]||{t:id,k:'',h:''};
+  const ins = inc.filter(e=>e.d===id).map(e=>NODE_INFO[e.s]?NODE_INFO[e.s].t.replace(/ —.*| \(.*/,''):e.s);
+  const outs= inc.filter(e=>e.s===id).map(e=>NODE_INFO[e.d]?NODE_INFO[e.d].t.replace(/ —.*| \(.*/,''):e.d);
+  const d=document.getElementById('nodeDetail');
+  d.innerHTML='<div class="ndhead"><h3>'+info.t+'</h3><span class="pill">'+info.k+'</span></div>'
+    +'<div>'+info.h+'</div>'
+    +'<div class="links"><b>in ←</b> '+(ins.length?ins.join(', '):'—')+' &nbsp;·&nbsp; <b>out →</b> '+(outs.length?outs.join(', '):'—')+'</div>';
+}
+
+fetch('lineage.svg').then(r=>r.text()).then(txt=>{
+  vp.innerHTML=txt;
+  svg=vp.querySelector('svg');
+  const vb=(svg.getAttribute('viewBox')||'0 0 1200 600').split(/\s+/).map(Number);
+  natW=vb[2]||1200; natH=vb[3]||600;
+  svg.removeAttribute('width'); svg.removeAttribute('height');
+  svg.setAttribute('width',natW); svg.setAttribute('height',natH);
+  svg.style.position='absolute'; svg.style.transformOrigin='0 0';
+  vp.querySelectorAll('g.node').forEach(g=>{ const tEl=g.querySelector('title'); if(!tEl)return;
+    nodes[tEl.textContent.trim()]=g; });
+  vp.querySelectorAll('g.edge').forEach(g=>{ const tEl=g.querySelector('title'); if(!tEl)return;
+    const parts=tEl.textContent.trim().split('->'); if(parts.length===2) edges.push({s:parts[0].trim(),d:parts[1].trim(),g}); });
+  fitView();
+}).catch(e=>{ vp.innerHTML='<div class="hint" style="padding:18px">Could not load lineage.svg ('+e+'). Serve this folder over http (the graph is fetched). <a href="lineage.svg">open the SVG directly</a>.</div>'; });
+
+/* wheel zoom */
+vp.addEventListener('wheel',e=>{ if(!svg)return; e.preventDefault(); const r=vp.getBoundingClientRect();
+  zoomAt(e.clientX-r.left,e.clientY-r.top, e.deltaY<0?1.12:1/1.12); }, {passive:false});
+/* pan vs click */
+let dragging=false,moved=0,lastX=0,lastY=0,pid=null,downT=null;
+vp.addEventListener('pointerdown',e=>{ if(!svg)return; dragging=true; moved=0; lastX=e.clientX; lastY=e.clientY;
+  downT=e.target; pid=e.pointerId; try{vp.setPointerCapture(pid);}catch(_){ } vp.classList.add('grabbing'); });
+vp.addEventListener('pointermove',e=>{ if(!dragging)return; const dx=e.clientX-lastX,dy=e.clientY-lastY;
+  moved+=Math.abs(dx)+Math.abs(dy); tx+=dx; ty+=dy; lastX=e.clientX; lastY=e.clientY; apply(); });
+function endDrag(e){ if(!dragging)return; dragging=false; vp.classList.remove('grabbing');
+  if(pid!=null){try{vp.releasePointerCapture(pid);}catch(_){ } pid=null;}
+  if(moved<5){ const ng=downT&&downT.closest?downT.closest('g.node'):null;
+    if(ng){ const tEl=ng.querySelector('title'); if(tEl) selectNode(tEl.textContent.trim()); }
+    else clearSel(); } }
+vp.addEventListener('pointerup',endDrag);
+vp.addEventListener('pointercancel',()=>{dragging=false;vp.classList.remove('grabbing');});
+window.addEventListener('resize',()=>{ if(svg) fitView(); });
+
+/* =================== visual ↔ math toggle =================== */
+function showPane(which){
+  document.getElementById('paneVisual').classList.toggle('hidden',which!=='visual');
+  document.getElementById('paneMath').classList.toggle('hidden',which!=='math');
+  document.getElementById('tabVisual').classList.toggle('on',which==='visual');
+  document.getElementById('tabMath').classList.toggle('on',which==='math');
+  if(which==='math' && window.MathJax && MathJax.typesetPromise && !window.__mj){
+    MathJax.typesetPromise([document.getElementById('paneMath')]).then(()=>{window.__mj=true;}); }
+}
+
+/* =================== reverse-vs-forward KL demo =================== */
+(function(){
+  const cv=document.getElementById('klcanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const N=260, xs=[]; for(let i=0;i<N;i++) xs.push(i/(N-1));
+  const gauss=(x,m,s)=>Math.exp(-0.5*((x-m)/s)**2)/(s*Math.sqrt(2*Math.PI));
+  const norm=a=>{const z=a.reduce((p,c)=>p+c,0);return a.map(v=>v/z);};
+  const teacher=norm(xs.map(x=>0.62*gauss(x,0.34,0.05)+0.38*gauss(x,0.70,0.05)));
+  const EPS=1e-9;
+  const studentDist=(m,s)=>norm(xs.map(x=>gauss(x,m,s)+EPS));
+  const klRev=q=>{let k=0;for(let i=0;i<N;i++)k+=q[i]*Math.log((q[i]+EPS)/(teacher[i]+EPS));return k;};
+  const klFwd=q=>{let k=0;for(let i=0;i<N;i++)k+=teacher[i]*Math.log((teacher[i]+EPS)/(q[i]+EPS));return k;};
+  function optimize(kind){let best=1e9,bm=0.5,bs=0.12;
+    for(let m=0.12;m<=0.88;m+=0.02)for(let s=0.05;s<=0.26;s+=0.01){
+      const q=studentDist(m,s); const k=kind==='reverse'?klRev(q):klFwd(q);
+      if(k<best){best=k;bm=m;bs=s;}} return {m:bm,s:bs};}
+  const tgtRev=optimize('reverse'), tgtFwd=optimize('forward');
+  let yMax=Math.max(...teacher);
+  [tgtRev,tgtFwd].forEach(t=>{yMax=Math.max(yMax,...studentDist(t.m,t.s));}); yMax*=1.12;
+  let mode='reverse', cur={m:0.5,s:0.2}, tgt={...tgtRev}, raf=null;
+  const PAD={l:14,r:14,t:16,b:22};
+  const H=300;
+  function X(x){const w=cv.clientWidth||820;return PAD.l+x*(w-PAD.l-PAD.r);}
+  function Y(d){return (H-PAD.b)-(d/yMax)*(H-PAD.t-PAD.b);}
+  function path(dist){ctx.beginPath();for(let i=0;i<N;i++){const px=X(xs[i]),py=Y(dist[i]);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}}
+  function resize(){const w=cv.clientWidth||820;cv.width=w*devicePixelRatio;cv.height=H*devicePixelRatio;
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);draw();}
+  function draw(){const w=cv.clientWidth||820;ctx.clearRect(0,0,w,H);
+    ctx.strokeStyle='#e2e6ec';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(PAD.l,H-PAD.b);ctx.lineTo(w-PAD.r,H-PAD.b);ctx.stroke();
+    path(teacher);ctx.lineTo(X(1),H-PAD.b);ctx.lineTo(X(0),H-PAD.b);ctx.closePath();ctx.fillStyle='rgba(118,185,0,.16)';ctx.fill();
+    path(teacher);ctx.strokeStyle='#5a8f00';ctx.lineWidth=2;ctx.stroke();
+    path(studentDist(cur.m,cur.s));ctx.strokeStyle='#2563c9';ctx.lineWidth=2.6;ctx.stroke();
+    ctx.font='12px system-ui';ctx.fillStyle='#5a8f00';ctx.fillText('teacher  (two good continuations)',X(0.02),16);
+    ctx.fillStyle='#2563c9';ctx.fillText('student',X(0.02),32);}
+  function read(){const q=studentDist(cur.m,cur.s);const el=document.getElementById('klread');
+    el.textContent = mode==='reverse'
+      ? 'minimizing  D_KL( student ‖ teacher ) = '+klRev(q).toFixed(3)+'   (reverse — MOPD)'
+      : 'minimizing  D_KL( teacher ‖ student ) = '+klFwd(q).toFixed(3)+'   (forward — standard distillation)';}
+  function animate(){cur.m+=(tgt.m-cur.m)*0.16;cur.s+=(tgt.s-cur.s)*0.16;draw();
+    if(Math.abs(tgt.m-cur.m)>1e-4||Math.abs(tgt.s-cur.s)>1e-4)raf=requestAnimationFrame(animate);
+    else{cur.m=tgt.m;cur.s=tgt.s;draw();read();}}
+  function setMode(mm){mode=mm;tgt= mm==='reverse'?{...tgtRev}:{...tgtFwd};
+    document.getElementById('btnRev').classList.toggle('ron',mm==='reverse');
+    document.getElementById('btnFwd').classList.toggle('fon',mm==='forward');
+    document.getElementById('klcap').innerHTML = mm==='reverse'
+      ? "<b>Reverse KL (MOPD).</b> The student snaps onto the teacher's <i>dominant</i> mode and goes ~0 wherever the teacher is ~0 (\"zero-forcing\"). It <b>commits</b> — it would rather nail one continuation the teacher endorses than hedge. Cost: it can ignore the teacher's second mode."
+      : "<b>Forward KL (standard distillation).</b> The student spreads to <i>cover both</i> teacher modes — and ends up putting real mass in the <b>valley between them</b>, which the teacher considers unlikely. Mass-covering = safe but blurry; it averages good options into a hedge.";
+    if(raf)cancelAnimationFrame(raf); animate();}
+  document.getElementById('btnRev').addEventListener('click',()=>setMode('reverse'));
+  document.getElementById('btnFwd').addEventListener('click',()=>setMode('forward'));
+  window.addEventListener('resize',resize);
+  resize(); setMode('reverse');
+})();
+</script>
+</body>
+</html>
